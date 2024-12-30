@@ -44,13 +44,11 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          docker rmi `docker images -q`
-          [[ -n "${AGENT_TOOLSDIRECTORY}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
-          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android 2>/dev/null
+          docker rmi $(docker images -q) || true
+          sudo rm -rf "${AGENT_TOOLSDIRECTORY}" /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android 2>/dev/null || true
           sudo -E apt-get -y update
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y install $(curl -fsSL https://is.gd/depend_ubuntu2204_openwrt)
-          sudo -E systemctl daemon-reload
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
           sudo mkdir -p /workdir
@@ -64,26 +62,13 @@ jobs:
         if: ${{ steps.init.outputs.status }} == 'success' && !cancelled()
         run: |
           # Set up compilation source code
-          if [[ "${{ inputs.source_branch }}" == *"openwrt"* ]]; then
-              REPO_URL="https://github.com/openwrt/openwrt"
-              REPO_BRANCH="main"
-              TAGS_NAME="official"
-          elif [[ "${{ inputs.source_branch }}" == *"lede"* ]]; then
-              REPO_URL="https://github.com/coolsnowwolf/lede"
-              REPO_BRANCH="master"
-              TAGS_NAME="lede"
-          elif [[ "${{ inputs.source_branch }}" == *"immortalwrt"* ]]; then
-              REPO_URL="https://github.com/immortalwrt/immortalwrt"
-              REPO_BRANCH="master"
-              TAGS_NAME="immortalwrt"
-          elif [[ "${{ inputs.source_branch }}" == *"Lienol"* ]]; then
-              REPO_URL="https://github.com/Lienol/openwrt"
-              REPO_BRANCH="22.03"
-              TAGS_NAME="Lienol"
-          else
-              echo "Unknown source code repository."
-              exit 1
-          fi
+          case "${{ inputs.source_branch }}" in
+            *"openwrt"*) REPO_URL="https://github.com/openwrt/openwrt"; REPO_BRANCH="main"; TAGS_NAME="official";;
+            *"lede"*) REPO_URL="https://github.com/coolsnowwolf/lede"; REPO_BRANCH="master"; TAGS_NAME="lede";;
+            *"immortalwrt"*) REPO_URL="https://github.com/immortalwrt/immortalwrt"; REPO_BRANCH="master"; TAGS_NAME="immortalwrt";;
+            *"Lienol"*) REPO_URL="https://github.com/Lienol/openwrt"; REPO_BRANCH="22.03"; TAGS_NAME="Lienol";;
+            *) echo "Unknown source code repository."; exit 1;;
+          esac
 
           # Clone source code
           git clone -q --single-branch --depth=1 --branch=${REPO_BRANCH} ${REPO_URL} openwrt
@@ -186,15 +171,3 @@ jobs:
           retain_days: 1
           keep_minimum_runs: 3
           token: ${{ secrets.GH_TOKEN }}
-          body: |
-
-            ### OpenWrt Image information
-            - Default IP: 192.168.1.1
-            - Default username: root
-            - Default password: password
-            - Default WIFI name: OpenWrt
-            - Default WIFI password: none
-            ### Install to EMMC
-            - Login to OpenWrt → System → Amlogic Service → Install OpenWrt
-            ### OpenWrt Image Verification
-            - sha256sum
