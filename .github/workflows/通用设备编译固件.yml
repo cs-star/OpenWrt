@@ -1,6 +1,6 @@
 #============================================================================================
 # https://github.com/ophub/amlogic-s9xxx-openwrt
-# Description: Build OpenWrt 24.10.0-rc5
+# Description: Build OpenWrt
 #============================================================================================
 
 name: 通用设备编译固件
@@ -12,11 +12,11 @@ on:
       source_branch:
         description: "Select the source branch"
         required: false
-        default: "lede-master"
+        default: "openwrt-main"
         type: choice
         options:
           - openwrt-main
-          - lede-master  # LEDE master 分支
+          - lede-master
           - immortalwrt-master
           - Lienol-master
 
@@ -29,7 +29,6 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-  TARGET_VERSION: "v24.10.0-rc5"  # 指定版本
 
 jobs:
   build:
@@ -38,20 +37,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@main
 
       - name: Initialization environment
         id: init
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get install -y build-essential git wget unzip \
-                                  libncurses5-dev zlib1g-dev \
-                                  gawk git subversion flex bison \
-                                  libssl-dev python3 python3-distutils \
-                                  python3-pip
+          set -e  # Exit immediately if a command exits with a non-zero status
+          docker rmi $(docker images -q) || true
+          sudo rm -rf "${AGENT_TOOLSDIRECTORY}" /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android 2>/dev/null || true
+          sudo -E apt-get -y update
+          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo -E apt-get -y install $(curl -fsSL https://is.gd/depend_ubuntu2204_openwrt)
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
           sudo mkdir -p /workdir
           sudo chown ${USER}:${GROUPS} /workdir
           sudo timedatectl set-timezone "${TZ}"
@@ -71,8 +71,7 @@ jobs:
             *) echo "Unknown source code repository."; exit 1;;
           esac
 
-          # 克隆指定版本的LEDE
-          git clone -q --single-branch --branch=${TARGET_VERSION} ${REPO_URL} openwrt
+          git clone -q --single-branch --depth=1 --branch=${REPO_BRANCH} ${REPO_URL} openwrt
           ln -sf /workdir/openwrt ${GITHUB_WORKSPACE}/openwrt
 
           echo "build_tag=OpenWrt_${TAGS_NAME}_$(date +"%Y.%m")" >> $GITHUB_ENV
@@ -123,7 +122,7 @@ jobs:
         run: df -hT
 
       - name: Upload bin directory
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@main
         if: env.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
         with:
           name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -139,7 +138,7 @@ jobs:
           echo "status=success" >> $GITHUB_ENV
 
       - name: Upload firmware directory
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@main
         if: env.status == 'success' && !cancelled()
         with:
           name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -151,6 +150,8 @@ jobs:
         run: |
           echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
           touch release.txt
+          [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
+          [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
           echo "status=success" >> $GITHUB_ENV
 
       - name: Upload firmware to release
