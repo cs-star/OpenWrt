@@ -33,6 +33,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 720  # 增加超时限制为12小时
     if: ${{ github.event.repository.owner.id }} == ${{ github.event.sender.id }}
 
     steps:
@@ -44,17 +45,29 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          set -e  # Exit immediately if a command exits with a non-zero status
+          set -e
+          echo "Cleaning Docker images..."
           docker rmi $(docker images -q) || true
+          echo "Cleaning previous environment..."
           sudo rm -rf "${AGENT_TOOLSDIRECTORY}" /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android 2>/dev/null || true
+          echo "Updating apt sources..."
           sudo -E apt-get -y update
+          echo "Purging unnecessary packages..."
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          echo "Installing dependencies..."
           sudo -E apt-get -y install $(curl -fsSL https://is.gd/depend_ubuntu2204_openwrt)
+          echo "Auto removing unnecessary packages..."
           sudo -E apt-get -y autoremove --purge
+          echo "Cleaning apt cache..."
           sudo -E apt-get clean
+          echo "Creating workdir..."
           sudo mkdir -p /workdir
           sudo chown ${USER}:${GROUPS} /workdir
+          echo "Setting timezone..."
           sudo timedatectl set-timezone "${TZ}"
+          echo "Initializing space cleanup..."
+          # 清理可能残留的临时文件
+          sudo rm -rf /tmp/* /var/tmp/*
           echo "status=success" >> $GITHUB_ENV
 
       - name: Clone source code [ ${{ inputs.source_branch }} ]
@@ -105,16 +118,18 @@ jobs:
         run: |
           cd openwrt/
           make defconfig
-          make download -j8
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
+          make download -j$(nproc)
+          # 删除dl目录下不必要的文件，避免占用空间
+          rm -rf dl/*
+          # 再次确认空间
+          df -hT
 
       - name: Compile the OpenWrt
         id: compile
         run: |
           cd openwrt/
-          echo -e "$(nproc) thread compile"
-          make -j$(($(nproc) + 1)) V=s || (echo "Compile failed, attempting single-threaded compile..." && make -j1 V=s)
+          echo "Starting compilation with $(nproc) threads..."
+          make -j$(nproc) V=s || (echo "Compile failed, cleaning and attempting single-thread build..." && make clean && make -j1 V=s)
           echo "status=success" >> $GITHUB_ENV
 
       - name: Check space usage
@@ -150,8 +165,8 @@ jobs:
         run: |
           echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_ENV
           touch release.txt
-          [ $UPLOAD_COWTRANSFER = true ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
-          [ $UPLOAD_WETRANSFER = true ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
+          [ "$UPLOAD_COWTRANSFER" = "true" ] && echo "🔗 [Cowtransfer](${{ steps.cowtransfer.outputs.url }})" >> release.txt
+          [ "$UPLOAD_WETRANSFER" = "true" ] && echo "🔗 [WeTransfer](${{ steps.wetransfer.outputs.url }})" >> release.txt
           echo "status=success" >> $GITHUB_ENV
 
       - name: Upload firmware to release
