@@ -1,56 +1,57 @@
 #!/bin/bash
-#========================================================================================================================
-# https://github.com/ophub/amlogic-s9xxx-openwrt
-# Description: Automatically Build OpenWrt for Amlogic s9xxx tv box
-# Function: Diy script (After Update feeds, Modify the default IP, hostname, theme, add/remove software packages, etc.)
-# Source code repository: https://github.com/coolsnowwolf/lede / Branch: master
-#========================================================================================================================
+# OpenWrt/LEDE build hook: run after feeds update/install.
+set -eu
 
-# ------------------------------- Main source started -------------------------------
-#
-# Modify default theme（FROM uci-theme-bootstrap CHANGE TO luci-theme-material）
-sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' ./feeds/luci/collections/luci/Makefile
+log() { printf '[diy-part2] %s\n' "$*"; }
+die() { printf '[diy-part2] ERROR: %s\n' "$*" >&2; exit 1; }
 
-# Add autocore support for armvirt
-sed -i 's/TARGET_rockchip/TARGET_rockchip\|\|TARGET_armvirt/g' package/lean/autocore/Makefile
+[ -f "include/toplevel.mk" ] || die "请在 OpenWrt 源码根目录执行此脚本。"
 
-#=============================================================
-sed -i 's/KERNEL_PATCHVER:=6.6/KERNEL_PATCHVER:=6.12/g' ./target/linux/x86/Makefile
+# Use Argon only when the current LuCI collection still references Bootstrap.
+# The supplied .config already selects luci-theme-argon.
+luci_collection="feeds/luci/collections/luci/Makefile"
+if [ -f "$luci_collection" ] && grep -q 'luci-theme-bootstrap' "$luci_collection"; then
+  sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' "$luci_collection"
+  log "默认 LuCI 主题依赖已切换为 luci-theme-argon。"
+else
+  log "主题依赖无需修改，或当前 feeds 中不存在 LuCI collection 文件。"
+fi
 
-# Set etc/openwrt_release
-sed -i "s|DISTRIB_REVISION='.*'|DISTRIB_REVISION='R$(date +%Y.%m.%d)'|g" package/lean/default-settings/files/zzz-default-settings
-echo "DISTRIB_SOURCECODE='lede'" >>package/base-files/files/etc/openwrt_release
+# Do not force KERNEL_PATCHVER here. The source branch controls its supported
+# kernel versions; keep .config aligned with that branch and let make defconfig
+# resolve dependencies. This avoids the old hard-coded 6.12 override.
 
-# Modify default IP（FROM 192.168.1.1 CHANGE TO 192.168.31.4）
-# sed -i 's/192.168.1.1/192.168.100.222/g' /package/base-files/luci2/bin/config_generate
+# LEDE's first-boot settings script writes the final revision into
+# /etc/openwrt_release using the @BUILD_DATE@ placeholder.
+settings_file="package/lean/default-settings/files/zzz-default-settings"
+build_date="$(date +%Y.%m.%d)"
+if [ -f "$settings_file" ]; then
+  if grep -q '@BUILD_DATE@' "$settings_file"; then
+    sed -i "s/@BUILD_DATE@/$build_date/g" "$settings_file"
+    log "已设置固件构建日期：$build_date"
+  else
+    log "未发现 @BUILD_DATE@ 占位符，跳过版本日期替换。"
+  fi
+else
+  log "未找到 $settings_file，跳过版本日期替换。"
+fi
 
-# Replace the default software source
-# sed -i 's#openwrt.proxy.ustclug.org#mirrors.bfsu.edu.cn\\/openwrt#' package/lean/default-settings/files/zzz-default-settings
-#
-# ------------------------------- Main source ends -------------------------------
+release_file="package/base-files/files/etc/openwrt_release"
+if [ -f "$release_file" ]; then
+  if grep -q '^DISTRIB_SOURCECODE=' "$release_file"; then
+    sed -i "s|^DISTRIB_SOURCECODE=.*|DISTRIB_SOURCECODE='lede'|" "$release_file"
+  else
+    printf "DISTRIB_SOURCECODE='lede'\n" >> "$release_file"
+  fi
+  log "已设置固件源码标识：lede。"
+else
+  log "未找到 $release_file，跳过源码标识设置。"
+fi
 
-# ------------------------------- Other started -------------------------------
-#
-# Add luci-app-amlogic
+# Optional third-party packages and patches should be added only after
+# checking that their Makefiles and dependencies exist in the selected feeds.
+# Example:
 # svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
+# git apply ../config/patches/0001-example.patch
 
-# Fix runc version error
-# rm -rf ./feeds/packages/utils/runc/Makefile
-# svn export https://github.com/openwrt/packages/trunk/utils/runc/Makefile ./feeds/packages/utils/runc/Makefile
-
-# coolsnowwolf default software package replaced with Lienol related software package
-# rm -rf feeds/packages/utils/{containerd,libnetwork,runc,tini}
-# svn co https://github.com/Lienol/openwrt-packages/trunk/utils/{containerd,libnetwork,runc,tini} feeds/packages/utils
-
-# Add third-party software packages (The entire repository)
-# git clone https://github.com/libremesh/lime-packages.git package/lime-packages
-# Add third-party software packages (Specify the package)
-# svn co https://github.com/libremesh/lime-packages/trunk/packages/{shared-state-pirania,pirania-app,pirania} package/lime-packages/packages
-# Add to compile options (Add related dependencies according to the requirements of the third-party software package Makefile)
-# sed -i "/DEFAULT_PACKAGES/ s/$/ pirania-app pirania ip6tables-mod-nat ipset shared-state-pirania uhttpd-mod-lua/" target/linux/armvirt/Makefile
-
-# Apply patch
-# git apply ../config/patches/{0001*,0002*}.patch --directory=feeds/luci
-#
-# ------------------------------- Other ends -------------------------------
-
+log "构建后自定义步骤完成。"
