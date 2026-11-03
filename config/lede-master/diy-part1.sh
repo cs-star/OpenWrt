@@ -1,14 +1,12 @@
 #!/bin/bash
 #========================================================================================================================
-# https://github.com/ophub/amlogic-s9xxx-openwrt
-# Description: Automatically Build OpenWrt for Amlogic s9xxx tv box
-# Function: Diy script (Before Update feeds, Modify the default IP, hostname, theme, add/remove software packages, etc.)
-# Source code repository: https://github.com/coolsnowwolf/lede / Branch: master
+# diy-part1.sh (Before Update feeds) - X86 / lede-master
 #========================================================================================================================
 
-# Add a feed source
-# sed -i '$a src-git lienol https://github.com/Lienol/openwrt-package' feeds.conf.default
+# 可选：添加常用第三方 feed（按需取消注释）
+# echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+# echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages' >>feeds.conf.default
+# echo 'src-git openclash https://github.com/vernesong/OpenClash' >>feeds.conf.default
 
-# other
-# rm -rf package/lean/{samba4,luci-app-samba4,luci-app-ttyd}
-
+# 清理不需要的包（可选）
+# rm -rf package/lean/{samba4,luci-app-samba4}
