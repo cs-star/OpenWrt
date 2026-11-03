@@ -1,25 +1,57 @@
 #!/bin/bash
-#========================================================================================================================
-# diy-part2.sh (After Update feeds) - X86 / lede-master
-# Default IP: 192.168.100.222 | Theme: Argon | Kernel: 6.18
-#========================================================================================================================
+# OpenWrt/LEDE build hook: run after feeds update/install.
+set -eu
 
-# 默认主题改为 Argon
-sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci/Makefile 2>/dev/null || true
+log() { printf '[diy-part2] %s\n' "$*"; }
+die() { printf '[diy-part2] ERROR: %s\n' "$*" >&2; exit 1; }
 
-# 内核版本改为 6.18（lede 当前 x86 默认也是 6.18，具体小版本由源码决定，如 6.18.x）
-sed -i 's/KERNEL_PATCHVER:=.*/KERNEL_PATCHVER:=6.18/g' target/linux/x86/Makefile
+[ -f "include/toplevel.mk" ] || die "请在 OpenWrt 源码根目录执行此脚本。"
 
-# 发行版信息
-sed -i "s|DISTRIB_REVISION='.*'|DISTRIB_REVISION='R$(date +%Y.%m.%d)'|g" package/lean/default-settings/files/zzz-default-settings 2>/dev/null || true
-echo "DISTRIB_SOURCECODE='lede'" >> package/base-files/files/etc/openwrt_release 2>/dev/null || true
+# Use Argon only when the current LuCI collection still references Bootstrap.
+# The supplied .config already selects luci-theme-argon.
+luci_collection="feeds/luci/collections/luci/Makefile"
+if [ -f "$luci_collection" ] && grep -q 'luci-theme-bootstrap' "$luci_collection"; then
+  sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' "$luci_collection"
+  log "默认 LuCI 主题依赖已切换为 luci-theme-argon。"
+else
+  log "主题依赖无需修改，或当前 feeds 中不存在 LuCI collection 文件。"
+fi
 
-# 默认 IP → 192.168.100.222
-sed -i 's/192.168.1.1/192.168.100.222/g' package/base-files/files/bin/config_generate
-sed -i 's/192.168.1.1/192.168.100.222/g' package/lean/default-settings/files/zzz-default-settings 2>/dev/null || true
+# Do not force KERNEL_PATCHVER here. The source branch controls its supported
+# kernel versions; keep .config aligned with that branch and let make defconfig
+# resolve dependencies. This avoids the old hard-coded 6.12 override.
 
-# 可选：修改主机名
-# sed -i 's/hostname='\''OpenWrt'\''/hostname='\''LEDE'\''/g' package/base-files/files/bin/config_generate
+# LEDE's first-boot settings script writes the final revision into
+# /etc/openwrt_release using the @BUILD_DATE@ placeholder.
+settings_file="package/lean/default-settings/files/zzz-default-settings"
+build_date="$(date +%Y.%m.%d)"
+if [ -f "$settings_file" ]; then
+  if grep -q '@BUILD_DATE@' "$settings_file"; then
+    sed -i "s/@BUILD_DATE@/$build_date/g" "$settings_file"
+    log "已设置固件构建日期：$build_date"
+  else
+    log "未发现 @BUILD_DATE@ 占位符，跳过版本日期替换。"
+  fi
+else
+  log "未找到 $settings_file，跳过版本日期替换。"
+fi
 
-# 可选：修改时区（默认已是 CST）
-# sed -i "s/timezone='UTC'/timezone='CST-8'/" package/base-files/files/bin/config_generate
+release_file="package/base-files/files/etc/openwrt_release"
+if [ -f "$release_file" ]; then
+  if grep -q '^DISTRIB_SOURCECODE=' "$release_file"; then
+    sed -i "s|^DISTRIB_SOURCECODE=.*|DISTRIB_SOURCECODE='lede'|" "$release_file"
+  else
+    printf "DISTRIB_SOURCECODE='lede'\n" >> "$release_file"
+  fi
+  log "已设置固件源码标识：lede。"
+else
+  log "未找到 $release_file，跳过源码标识设置。"
+fi
+
+# Optional third-party packages and patches should be added only after
+# checking that their Makefiles and dependencies exist in the selected feeds.
+# Example:
+# svn co https://github.com/ophub/luci-app-amlogic/trunk/luci-app-amlogic package/luci-app-amlogic
+# git apply ../config/patches/0001-example.patch
+
+log "构建后自定义步骤完成。"
