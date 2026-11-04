@@ -14,6 +14,7 @@ die() { printf '[diy-part1] ERROR: %s\n' "$*" >&2; exit 1; }
 # FEED_LINE='src-git lienol https://github.com/Lienol/openwrt-package'
 # if [ -f feeds.conf.default ] && ! grep -Fqx "$FEED_LINE" feeds.conf.default; then
 #   printf '%s\n' "$FEED_LINE" >> feeds.conf.default
+#   log "已添加自定义 feed"
 # fi
 
 # Optional package removals. Confirm package paths before enabling.
