@@ -5,6 +5,19 @@
 
 利用 **GitHub Actions** 在线编译固件，无需本地搭建编译环境。
 
+> **原作者仓库**：[xinlingduyu/build-openwrt](https://github.com/xinlingduyu/build-openwrt)  
+> 本仓库在原作者基础上精简为 **lede + X86_64** 专用版本。
+
+## 视频使用教程
+
+**推荐观看**（原作者推荐的操作教程）：
+
+- 标题：省时省力！OpenWrt固件全自动编译方法
+- 作者：实用技能（@shiyongjineng）
+- 链接：[https://www.youtube.com/watch?v=6j4ofS0GT38](https://www.youtube.com/watch?v=6j4ofS0GT38)
+
+视频涵盖完整操作流程：注册账号、生成 Token、Fork 仓库、添加 Secrets、设置权限、修改配置、开始编译、下载固件等。
+
 ## 当前支持
 
 | 项目 | 说明 |
@@ -77,6 +90,12 @@ A: 在 `diy-part1.sh` 中添加 feed 或 `git clone` 到 `package/`，然后在 
 
 **Q: 想改默认 IP？**  
 A: 编辑 `config/lede-master/diy-part2.sh`，搜索 `192.168.100.222` 替换即可。
+
+## 致谢
+
+- 原作者仓库：[xinlingduyu/build-openwrt](https://github.com/xinlingduyu/build-openwrt)
+- 视频教程：实用技能（@shiyongjineng）
+- 源码： [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)
 
 ## License
 
