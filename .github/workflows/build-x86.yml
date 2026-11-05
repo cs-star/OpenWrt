@@ -1,5 +1,5 @@
 #============================================================================================
-# X86 only - lede-master
+# X86 only - lede-master (始终拉取最新源码)
 #============================================================================================
 
 name: X86设备编译固件 (lede-master)
@@ -7,9 +7,9 @@ name: X86设备编译固件 (lede-master)
 on:
   workflow_dispatch:
   repository_dispatch:
-  # 可选：每周自动编译一次（取消注释启用）
-  # schedule:
-  #   - cron: '0 2 * * 1'   # 每周一 02:00 UTC
+  # 每周一自动编译一次（UTC 02:00 ≈ 北京时间 10:00）
+  schedule:
+    - cron: '0 2 * * 1'
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
@@ -76,12 +76,23 @@ jobs:
             ccache-x86-${{ runner.os }}-
             ccache-x86-
 
-      - name: Clone lede source
+      - name: Clone latest lede source
         working-directory: /workdir
         run: |
           set -e
+          echo ">>> 正在拉取最新 lede 源码 (branch: $REPO_BRANCH)..."
+          # 始终拉取最新源码（--depth=1 只取最新提交）
           git clone -q --single-branch --depth=1 --branch=$REPO_BRANCH $REPO_URL openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+
+          cd openwrt
+          echo "----------------------------------------"
+          echo "源码仓库 : $REPO_URL"
+          echo "分支     : $REPO_BRANCH"
+          echo "最新提交 : $(git rev-parse --short HEAD)"
+          echo "提交信息 : $(git log -1 --pretty=format:'%s')"
+          echo "提交时间 : $(git log -1 --pretty=format:'%ci')"
+          echo "----------------------------------------"
           df -hT
 
       - name: Load diy-part1 & feeds
@@ -146,7 +157,7 @@ jobs:
           body: |
             ### OpenWrt X86_64 固件
 
-            - **源码**: [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master`
+            - **源码**: [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master`（每次构建自动拉取最新）
             - **目标**: x86_64 (generic)
             - **默认 IP**: `192.168.100.222`
             - **默认主题**: Argon
