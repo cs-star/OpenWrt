@@ -22,11 +22,12 @@
 
 | 项目 | 说明 |
 |------|------|
-| 源码 | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master` |
+| 源码 | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master`（**每次构建自动拉取最新**） |
 | 架构 | **X86_64** 通用设备 |
 | 默认 IP | `192.168.100.222` |
 | 默认主题 | Argon |
 | 默认账号 | `root`（密码为空，首次登录后请立即修改） |
+| 自动编译 | 每周一自动构建一次（也可手动触发） |
 
 ## 使用方法
 
@@ -46,9 +47,12 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 
 ### 3. 开始编译
 
+**手动触发：**
 1. 打开 **Actions**
 2. 左侧选择 **X86设备编译固件 (lede-master)**
 3. 点击 **Run workflow** → **Run workflow**
+
+**自动触发：** 每周一 UTC 02:00（北京时间 10:00）自动编译。
 
 ### 4. 下载固件
 
@@ -61,7 +65,7 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 
 ```
 .
-├── .github/workflows/build-x86.yml   # 编译工作流
+├── .github/workflows/build-x86.yml   # 编译工作流（始终拉取最新源码）
 ├── config/
 │   ├── README.md
 │   └── lede-master/
@@ -73,12 +77,14 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 
 ## 说明与注意事项
 
-- 工作流固定克隆 lede `master`，仅编译 **X86_64**。
+- **每次构建都会重新 `git clone` 最新的 lede `master` 分支**，确保使用最新源码。
+- 工作流仅编译 **X86_64**。
 - `diy-part2.sh` 会将默认 LAN IP 设为 `192.168.100.222`，并尽量切换默认主题为 Argon。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 不编译 Docker / dockerd；OpenClash 等插件以 `config` 中选项为准。
 - 依赖安装已改为仓库内固定列表（原短链接已失效）。
 - 编译失败时可在 Actions 日志中查看完整输出（失败时会降级为单线程 `V=s`）。
+- 构建日志会显示当前拉取的源码提交哈希与提交信息，方便核对版本。
 
 ## 常见问题
 
@@ -90,6 +96,9 @@ A: 在 `diy-part1.sh` 中添加 feed 或 `git clone` 到 `package/`，然后在 
 
 **Q: 想改默认 IP？**  
 A: 编辑 `config/lede-master/diy-part2.sh`，搜索 `192.168.100.222` 替换即可。
+
+**Q: 如何确认用的是最新源码？**  
+A: 查看 Actions 日志中「Clone latest lede source」步骤，会显示最新提交哈希与提交信息。
 
 ## 致谢
 
