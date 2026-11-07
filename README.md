@@ -79,26 +79,29 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 
 - **每次构建都会重新 `git clone` 最新的 lede `master` 分支**，确保使用最新源码。
 - 工作流仅编译 **X86_64**。
+- 启用 **ccache** 加速二次编译，并自动缓存。
+- 同一分支同时只允许一个构建（concurrency），避免资源浪费。
 - `diy-part2.sh` 会将默认 LAN IP 设为 `192.168.100.222`，并尽量切换默认主题为 Argon。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 不编译 Docker / dockerd；OpenClash 等插件以 `config` 中选项为准。
-- 依赖安装已改为仓库内固定列表（原短链接已失效）。
-- 编译失败时可在 Actions 日志中查看完整输出（失败时会降级为单线程 `V=s`）。
-- 构建日志会显示当前拉取的源码提交哈希与提交信息，方便核对版本。
+- 依赖安装使用仓库内固定列表（原短链接已失效）。
+- 编译失败时自动降级为单线程 `V=s` 以便定位问题。
+- Release 与 Actions Summary 会记录本次使用的源码提交哈希与提交信息。
+- 固件打包时会清理不常用镜像，只保留常用格式。
 
 ## 常见问题
 
 **Q: 编译时间过长 / 失败？**  
-A: GitHub Runner 负载波动较大。可重试，或精简 `config` 中不需要的包。
+A: GitHub Runner 负载波动较大。可重试，或精简 `config` 中不需要的包。二次编译会受益于 ccache。
 
 **Q: 如何添加第三方插件？**  
 A: 在 `diy-part1.sh` 中添加 feed 或 `git clone` 到 `package/`，然后在 `config` 中启用对应 `CONFIG_PACKAGE_xxx=y`。
 
 **Q: 想改默认 IP？**  
-A: 编辑 `config/lede-master/diy-part2.sh`，搜索 `192.168.100.222` 替换即可。
+A: 编辑 `config/lede-master/diy-part2.sh`，修改 `DEFAULT_IP` 变量即可。
 
 **Q: 如何确认用的是最新源码？**  
-A: 查看 Actions 日志中「Clone latest lede source」步骤，会显示最新提交哈希与提交信息。
+A: 查看 Actions 日志「Clone latest lede source」步骤，或 Release 说明中的提交哈希。
 
 ## 致谢
 
