@@ -199,11 +199,11 @@ jobs:
             | 提交 | `${{ env.SOURCE_SHA }}` — ${{ env.SOURCE_MSG }} |
             | 提交时间 | ${{ env.SOURCE_DATE }} |
             | 目标 | x86_64 (generic) |
-            | 默认 IP | `192.168.100.222` |
+            | 默认 IP | `192.168.100.253` |
             | 默认主题 | Argon |
             | 构建时间 | ${{ env.FILE_DATE }} |
 
-            刷写后请使用浏览器访问 http://192.168.100.222  
+            刷写后请使用浏览器访问 http://192.168.100.253  
             默认账号：`root`（密码为空，首次登录后请立即修改）
           files: ${{ env.FIRMWARE }}/*
           generate_release_notes: false
