@@ -24,7 +24,7 @@
 |------|------|
 | 源码 | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master`（**每次构建自动拉取最新**） |
 | 架构 | **X86_64** 通用设备 |
-| 默认 IP | `192.168.100.222` |
+| 默认 IP | `192.168.100.253` |
 | 默认主题 | Argon |
 | 默认账号 | `root`（密码为空，首次登录后请立即修改） |
 | 自动编译 | 每周一自动构建一次（也可手动触发） |
@@ -81,7 +81,7 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 - 工作流仅编译 **X86_64**。
 - 启用 **ccache** 加速二次编译，并自动缓存。
 - 同一分支同时只允许一个构建（concurrency），避免资源浪费。
-- `diy-part2.sh` 会将默认 LAN IP 设为 `192.168.100.222`，并尽量切换默认主题为 Argon。
+- `diy-part2.sh` 会将默认 LAN IP 设为 `192.168.100.253`，并尽量切换默认主题为 Argon。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 不编译 Docker / dockerd；OpenClash 等插件以 `config` 中选项为准。
 - 依赖安装使用仓库内固定列表（原短链接已失效）。
