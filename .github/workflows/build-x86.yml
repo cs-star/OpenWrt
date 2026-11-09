@@ -15,6 +15,10 @@ concurrency:
   group: openwrt-x86-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  actions: write
+
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
@@ -69,8 +73,7 @@ jobs:
           sudo -E apt-get clean
           sudo timedatectl set-timezone "$TZ"
           sudo mkdir -p /workdir
-          sudo chown $USER:$USER /workdir
-          # ccache 加速
+          sudo chown "$USER:$USER" /workdir
           ccache -M "$CCACHE_MAXSIZE" || true
           ccache -z || true
 
@@ -89,12 +92,12 @@ jobs:
         run: |
           set -e
           echo ">>> 正在拉取最新 lede 源码 (branch: $REPO_BRANCH)..."
-          git clone -q --single-branch --depth=1 --branch=$REPO_BRANCH $REPO_URL openwrt
-          ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          git clone -q --single-branch --depth=1 --branch="$REPO_BRANCH" "$REPO_URL" openwrt
+          ln -sf /workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
 
           cd openwrt
           SOURCE_SHA=$(git rev-parse --short HEAD)
-          SOURCE_MSG=$(git log -1 --pretty=format:'%s')
+          SOURCE_MSG=$(git log -1 --pretty=format:'%s' | tr -d '`|' | head -c 120)
           SOURCE_DATE=$(git log -1 --pretty=format:'%ci')
 
           echo "----------------------------------------"
@@ -105,10 +108,12 @@ jobs:
           echo "提交时间 : $SOURCE_DATE"
           echo "----------------------------------------"
 
-          echo "SOURCE_SHA=$SOURCE_SHA" >> $GITHUB_ENV
-          echo "SOURCE_MSG=$SOURCE_MSG" >> $GITHUB_ENV
-          echo "SOURCE_DATE=$SOURCE_DATE" >> $GITHUB_ENV
-          echo "sha=$SOURCE_SHA" >> $GITHUB_OUTPUT
+          {
+            echo "SOURCE_SHA=$SOURCE_SHA"
+            echo "SOURCE_MSG=$SOURCE_MSG"
+            echo "SOURCE_DATE=$SOURCE_DATE"
+          } >> "$GITHUB_ENV"
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           df -hT
 
       - name: Load diy-part1 & feeds
@@ -139,7 +144,7 @@ jobs:
           set -e
           cd openwrt
           make download -j"$(nproc)"
-          find dl -size -1024c -exec rm -f {} \; || true
+          find dl -type f -size -1024c -delete 2>/dev/null || true
 
       - name: Compile firmware
         id: compile
@@ -150,13 +155,13 @@ jobs:
           export CCACHE_DIR="$CCACHE_DIR"
           echo ">>> $(nproc) threads compiling (ccache enabled)..."
           if make -j"$(nproc)"; then
-            echo "status=success" >> $GITHUB_ENV
-            echo "result=success" >> $GITHUB_OUTPUT
+            echo "status=success" >> "$GITHUB_ENV"
+            echo "result=success" >> "$GITHUB_OUTPUT"
           else
             echo ">>> 并行编译失败，降级为单线程 V=s ..."
             make -j1 V=s
-            echo "status=success" >> $GITHUB_ENV
-            echo "result=success" >> $GITHUB_OUTPUT
+            echo "status=success" >> "$GITHUB_ENV"
+            echo "result=success" >> "$GITHUB_OUTPUT"
           fi
           echo ">>> ccache 统计："
           ccache -s || true
@@ -167,12 +172,16 @@ jobs:
         run: |
           set -e
           cd openwrt/bin/targets/*/*
-          # 清理不需要的文件，只保留常用固件与校验文件
           rm -rf packages
-          find . -type f \( -name '*.vdi' -o -name '*.vmdk' -o -name '*.vhdx' -o -name '*rootfs*' -o -name '*kernel*' \) -delete 2>/dev/null || true
-          # 保留 squashfs、ext4、efi、combined 等常用镜像与 sha256sums
-          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-          echo "FILE_DATE=$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          # 删除体积大且不常用的虚拟机磁盘格式，保留常用刷机镜像
+          find . -maxdepth 1 -type f \( \
+            -name '*.vdi' -o -name '*.vmdk' -o -name '*.vhdx' -o \
+            -name '*rootfs.tar.gz' -o -name '*.manifest' \
+          \) -delete 2>/dev/null || true
+
+          FILE_DATE=$(date +%Y%m%d_%H%M)
+          echo "FIRMWARE=$PWD" >> "$GITHUB_ENV"
+          echo "FILE_DATE=$FILE_DATE" >> "$GITHUB_ENV"
           echo ">>> 固件列表："
           ls -lh
 
@@ -183,6 +192,7 @@ jobs:
           name: OpenWrt_x86_64_${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
           retention-days: 7
+          if-no-files-found: error
 
       - name: Create release
         if: env.UPLOAD_RELEASE == 'true' && env.status == 'success' && !cancelled()
@@ -201,27 +211,31 @@ jobs:
             | 目标 | x86_64 (generic) |
             | 默认 IP | `192.168.100.253` |
             | 默认主题 | Argon |
+            | 时区 | Asia/Shanghai |
             | 构建时间 | ${{ env.FILE_DATE }} |
 
             刷写后请使用浏览器访问 http://192.168.100.253  
             默认账号：`root`（密码为空，首次登录后请立即修改）
           files: ${{ env.FIRMWARE }}/*
           generate_release_notes: false
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build summary
         if: always()
         run: |
-          echo "### 构建摘要" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 项目 | 内容 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 状态 | ${{ env.status || 'failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 源码提交 | \`${{ env.SOURCE_SHA }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| 提交信息 | ${{ env.SOURCE_MSG }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 构建时间 | ${{ env.FILE_DATE || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Runner | ubuntu-22.04 |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### 构建摘要"
+            echo ""
+            echo "| 项目 | 内容 |"
+            echo "|------|------|"
+            echo "| 状态 | ${{ env.status || 'failed' }} |"
+            echo "| 源码提交 | \`${{ env.SOURCE_SHA }}\` |"
+            echo "| 提交信息 | ${{ env.SOURCE_MSG }} |"
+            echo "| 构建时间 | ${{ env.FILE_DATE || 'N/A' }} |"
+            echo "| Runner | ubuntu-22.04 |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cleanup old runs
         if: always()
