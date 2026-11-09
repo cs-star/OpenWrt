@@ -68,7 +68,25 @@ if [ -f "$settings_file" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 5. 主机名（可选）
+# 5. 默认时区 Asia/Shanghai
+# ---------------------------------------------------------------------------
+if [ -f "$cfg_gen" ]; then
+  sed -i "s/timezone='UTC'/timezone='CST-8'/g" "$cfg_gen" || true
+  sed -i "s/zonename='UTC'/zonename='Asia\/Shanghai'/g" "$cfg_gen" || true
+  # 兼容部分写法
+  if ! grep -q "zonename" "$cfg_gen"; then
+    sed -i "/timezone=/a\ \t\tset system.@system[-1].zonename='Asia/Shanghai'" "$cfg_gen" 2>/dev/null || true
+  fi
+  log "默认时区已设置为 Asia/Shanghai (CST-8)"
+fi
+
+if [ -f "$settings_file" ]; then
+  sed -i "s/timezone='UTC'/timezone='CST-8'/g" "$settings_file" 2>/dev/null || true
+  sed -i "s/zonename='UTC'/zonename='Asia\/Shanghai'/g" "$settings_file" 2>/dev/null || true
+fi
+
+# ---------------------------------------------------------------------------
+# 6. 主机名（可选）
 # ---------------------------------------------------------------------------
 # 如需修改主机名，取消下面注释：
 # if [ -f "$cfg_gen" ]; then
