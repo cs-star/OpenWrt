@@ -26,6 +26,7 @@
 | 架构 | **X86_64** 通用设备 |
 | 默认 IP | `192.168.100.253` |
 | 默认主题 | Argon |
+| 默认时区 | Asia/Shanghai (CST-8) |
 | 默认账号 | `root`（密码为空，首次登录后请立即修改） |
 | 自动编译 | 每周一自动构建一次（也可手动触发） |
 
@@ -41,7 +42,7 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 |------|------|
 | [`config/lede-master/config`](config/lede-master/config) | 软件包与目标（`.config`） |
 | [`config/lede-master/diy-part1.sh`](config/lede-master/diy-part1.sh) | feeds 更新前钩子（可添加 feed、删除包） |
-| [`config/lede-master/diy-part2.sh`](config/lede-master/diy-part2.sh) | feeds 更新后钩子（默认 IP、主题、版本信息等） |
+| [`config/lede-master/diy-part2.sh`](config/lede-master/diy-part2.sh) | feeds 更新后钩子（默认 IP、主题、时区、版本信息等） |
 
 本地可用 `make menuconfig` 生成 `.config` 后覆盖 `config/lede-master/config`。
 
@@ -71,7 +72,7 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 │   └── lede-master/
 │       ├── config                    # .config（X86_64）
 │       ├── diy-part1.sh              # feeds 更新前
-│       └── diy-part2.sh              # feeds 更新后 / 默认 IP 等
+│       └── diy-part2.sh              # feeds 更新后 / 默认 IP、时区等
 └── README.md
 ```
 
@@ -81,13 +82,13 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 - 工作流仅编译 **X86_64**。
 - 启用 **ccache** 加速二次编译，并自动缓存。
 - 同一分支同时只允许一个构建（concurrency），避免资源浪费。
-- `diy-part2.sh` 会将默认 LAN IP 设为 `192.168.100.253`，并尽量切换默认主题为 Argon。
+- `diy-part2.sh` 会设置默认 LAN IP `192.168.100.253`、主题 Argon、时区 Asia/Shanghai。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 不编译 Docker / dockerd；OpenClash 等插件以 `config` 中选项为准。
 - 依赖安装使用仓库内固定列表（原短链接已失效）。
 - 编译失败时自动降级为单线程 `V=s` 以便定位问题。
 - Release 与 Actions Summary 会记录本次使用的源码提交哈希与提交信息。
-- 固件打包时会清理不常用镜像，只保留常用格式。
+- 固件打包时会清理不常用虚拟机磁盘格式，保留常用刷机镜像。
 
 ## 常见问题
 
