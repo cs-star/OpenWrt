@@ -8,20 +8,39 @@ die() { printf '[diy-part2] ERROR: %s\n' "$*" >&2; exit 1; }
 [ -f "include/toplevel.mk" ] || die "请在 OpenWrt 源码根目录执行此脚本。"
 
 # ---------------------------------------------------------------------------
-# 1. 默认主题：Bootstrap → Argon
+# 1. 默认主题 → Argon（兼容 bootstrap / design）
 # ---------------------------------------------------------------------------
-luci_collection="feeds/luci/collections/luci/Makefile"
-if [ -f "$luci_collection" ] && grep -q 'luci-theme-bootstrap' "$luci_collection"; then
-  sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' "$luci_collection"
-  log "默认 LuCI 主题依赖已切换为 luci-theme-argon。"
-else
-  log "主题依赖无需修改，或当前 feeds 中不存在 LuCI collection 文件。"
+if [ -d "feeds/luci/collections" ]; then
+  find feeds/luci/collections -type f -name 'Makefile' 2>/dev/null | while read -r mf; do
+    if grep -qE 'luci-theme-(bootstrap|design)' "$mf"; then
+      sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' "$mf"
+      sed -i 's/luci-theme-design/luci-theme-argon/g' "$mf"
+      log "已修改主题依赖: $mf"
+    fi
+  done
+fi
+
+# lean default-settings 里也可能写死主题
+settings_file="package/lean/default-settings/files/zzz-default-settings"
+if [ -f "$settings_file" ]; then
+  sed -i "s|luci-theme-bootstrap|luci-theme-argon|g" "$settings_file" 2>/dev/null || true
+  sed -i "s|luci-theme-design|luci-theme-argon|g" "$settings_file" 2>/dev/null || true
+  # 强制默认主题
+  if grep -q "mediaurlbase" "$settings_file"; then
+    sed -i "s|/luci-static/bootstrap|/luci-static/argon|g" "$settings_file" 2>/dev/null || true
+    sed -i "s|/luci-static/design|/luci-static/argon|g" "$settings_file" 2>/dev/null || true
+  else
+    # 追加一条设置默认主题的命令（若文件结构允许）
+    if ! grep -q "luci.main.mediaurlbase" "$settings_file"; then
+      printf "\nuci set luci.main.mediaurlbase='/luci-static/argon'\nuci commit luci\n" >> "$settings_file" || true
+    fi
+  fi
+  log "default-settings 默认主题已指向 Argon"
 fi
 
 # ---------------------------------------------------------------------------
 # 2. 固件版本日期（@BUILD_DATE@）
 # ---------------------------------------------------------------------------
-settings_file="package/lean/default-settings/files/zzz-default-settings"
 build_date="$(date +%Y.%m.%d)"
 if [ -f "$settings_file" ]; then
   if grep -q '@BUILD_DATE@' "$settings_file"; then
@@ -73,7 +92,6 @@ fi
 if [ -f "$cfg_gen" ]; then
   sed -i "s/timezone='UTC'/timezone='CST-8'/g" "$cfg_gen" || true
   sed -i "s/zonename='UTC'/zonename='Asia\/Shanghai'/g" "$cfg_gen" || true
-  # 兼容部分写法
   if ! grep -q "zonename" "$cfg_gen"; then
     sed -i "/timezone=/a\ \t\tset system.@system[-1].zonename='Asia/Shanghai'" "$cfg_gen" 2>/dev/null || true
   fi
