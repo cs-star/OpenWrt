@@ -35,7 +35,7 @@ for t in \
   luci-theme-openwrt \
   luci-theme-openwrt-2020 \
   luci-theme-netgear \
-  luci-theme-pink\
+  luci-theme-pink \
   luci-theme-purple
 do
   for base in package feeds; do
