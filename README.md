@@ -25,7 +25,7 @@
 | 源码 | [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) `master`（**每次构建自动拉取最新**） |
 | 架构 | **X86_64** 通用设备 |
 | 默认 IP | `192.168.100.253` |
-| 默认主题 | Argon |
+| 默认主题 | **Argon**（自动从 [jerrykuku/luci-theme-argon](https://github.com/jerrykuku/luci-theme-argon) 拉取） |
 | 默认时区 | Asia/Shanghai (CST-8) |
 | 默认账号 | `root`（密码为空，首次登录后请立即修改） |
 | 自动编译 | 每周一自动构建一次（也可手动触发） |
@@ -41,8 +41,8 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 | 文件 | 作用 |
 |------|------|
 | [`config/lede-master/config`](config/lede-master/config) | 软件包与目标（`.config`） |
-| [`config/lede-master/diy-part1.sh`](config/lede-master/diy-part1.sh) | feeds 更新前钩子（可添加 feed、删除包） |
-| [`config/lede-master/diy-part2.sh`](config/lede-master/diy-part2.sh) | feeds 更新后钩子（默认 IP、主题、时区、版本信息等） |
+| [`config/lede-master/diy-part1.sh`](config/lede-master/diy-part1.sh) | feeds 更新前钩子（拉取 Argon、可选加 feed） |
+| [`config/lede-master/diy-part2.sh`](config/lede-master/diy-part2.sh) | feeds 更新后钩子（默认 IP、主题、时区等） |
 
 本地可用 `make menuconfig` 生成 `.config` 后覆盖 `config/lede-master/config`。
 
@@ -70,30 +70,32 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 ├── config/
 │   ├── README.md
 │   └── lede-master/
-│       ├── config                    # .config（X86_64）
-│       ├── diy-part1.sh              # feeds 更新前
-│       └── diy-part2.sh              # feeds 更新后 / 默认 IP、时区等
+│       ├── config                    # .config（X86_64，含 luci-theme-argon）
+│       ├── diy-part1.sh              # 拉取 Argon 主题等
+│       └── diy-part2.sh              # 默认 IP / 主题 / 时区
 └── README.md
 ```
 
 ## 说明与注意事项
 
 - **每次构建都会重新 `git clone` 最新的 lede `master` 分支**，确保使用最新源码。
+- **Argon 主题**：构建前自动从 jerrykuku 仓库克隆，并在 diy-part2 中设为默认（兼容 lede 新默认 design / bootstrap）。
 - 工作流仅编译 **X86_64**。
 - 启用 **ccache** 加速二次编译，并自动缓存。
 - 同一分支同时只允许一个构建（concurrency），避免资源浪费。
-- `diy-part2.sh` 会设置默认 LAN IP `192.168.100.253`、主题 Argon、时区 Asia/Shanghai。
+- 默认 LAN IP：`192.168.100.253`，时区：Asia/Shanghai。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 不编译 Docker / dockerd；OpenClash 等插件以 `config` 中选项为准。
-- 依赖安装使用仓库内固定列表（原短链接已失效）。
 - 编译失败时自动降级为单线程 `V=s` 以便定位问题。
 - Release 与 Actions Summary 会记录本次使用的源码提交哈希与提交信息。
-- 固件打包时会清理不常用虚拟机磁盘格式，保留常用刷机镜像。
 
 ## 常见问题
 
 **Q: 编译时间过长 / 失败？**  
 A: GitHub Runner 负载波动较大。可重试，或精简 `config` 中不需要的包。二次编译会受益于 ccache。
+
+**Q: 为什么之前没有 Argon？**  
+A: 仅在 `.config` 里勾选不够，lede 源码不一定自带可用 Argon。现已在 `diy-part1.sh` 中自动拉取官方主题仓库。
 
 **Q: 如何添加第三方插件？**  
 A: 在 `diy-part1.sh` 中添加 feed 或 `git clone` 到 `package/`，然后在 `config` 中启用对应 `CONFIG_PACKAGE_xxx=y`。
@@ -109,6 +111,7 @@ A: 查看 Actions 日志「Clone latest lede source」步骤，或 Release 说�
 - 原作者仓库：[xinlingduyu/build-openwrt](https://github.com/xinlingduyu/build-openwrt)
 - 视频教程：实用技能（@shiyongjineng）
 - 源码： [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede)
+- 主题： [jerrykuku/luci-theme-argon](https://github.com/jerrykuku/luci-theme-argon)
 
 ## License
 
