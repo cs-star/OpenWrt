@@ -124,6 +124,8 @@ jobs:
           "$GITHUB_WORKSPACE/$DIY_P1_SH"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          # 确保 package 内的 Argon 被识别
+          ./scripts/feeds install -a -p packages 2>/dev/null || true
 
       - name: Load config & diy-part2
         run: |
@@ -173,7 +175,6 @@ jobs:
           set -e
           cd openwrt/bin/targets/*/*
           rm -rf packages
-          # 删除体积大且不常用的虚拟机磁盘格式，保留常用刷机镜像
           find . -maxdepth 1 -type f \( \
             -name '*.vdi' -o -name '*.vmdk' -o -name '*.vhdx' -o \
             -name '*rootfs.tar.gz' -o -name '*.manifest' \
@@ -210,7 +211,7 @@ jobs:
             | 提交时间 | ${{ env.SOURCE_DATE }} |
             | 目标 | x86_64 (generic) |
             | 默认 IP | `192.168.100.253` |
-            | 默认主题 | Argon |
+            | 主题 | **仅 Argon**（其它主题已移除） |
             | 时区 | Asia/Shanghai |
             | 构建时间 | ${{ env.FILE_DATE }} |
 
