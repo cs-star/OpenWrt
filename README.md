@@ -27,7 +27,8 @@
 | 默认 IP | `192.168.100.253` |
 | 主题 | **仅 Argon**（其它主题已移除） |
 | 默认时区 | Asia/Shanghai (CST-8) |
-| 默认账号 | `root`（密码为空，首次登录后请立即修改） |
+| 默认账号 | `root` |
+| 默认密码 | `password`（首次登录后请立即修改） |
 | 自动编译 | 每周一自动构建一次（也可手动触发） |
 
 ## 使用方法
@@ -84,6 +85,7 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 - 工作流仅编译 **X86_64**。
 - 启用 **ccache** 加速二次编译。
 - 默认 LAN IP：`192.168.100.253`，时区：Asia/Shanghai。
+- 默认登录：`root` / `password`（来自 lean default-settings）。
 - 内核版本跟随源码分支，不在脚本中强制覆盖。
 - 编译失败时自动降级为单线程 `V=s` 以便定位问题。
 
@@ -91,6 +93,9 @@ Repository → **Settings** → **Actions** → **General** → Workflow permiss
 
 **Q: 编译时间过长 / 失败？**  
 A: GitHub Runner 负载波动较大。可重试，或精简 `config` 中不需要的包。
+
+**Q: 登录密码是什么？**  
+A: 账号 `root`，密码 `password`。登录后请尽快修改。
 
 **Q: 界面里还能选其它主题吗？**  
 A: 不能。其它主题已从源码与配置中移除，固件内只有 Argon。
