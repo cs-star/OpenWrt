@@ -124,7 +124,6 @@ jobs:
           "$GITHUB_WORKSPACE/$DIY_P1_SH"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          # 确保 package 内的 Argon 被识别
           ./scripts/feeds install -a -p packages 2>/dev/null || true
 
       - name: Load config & diy-part2
@@ -213,10 +212,12 @@ jobs:
             | 默认 IP | `192.168.100.253` |
             | 主题 | **仅 Argon**（其它主题已移除） |
             | 时区 | Asia/Shanghai |
+            | 默认账号 | `root` |
+            | 默认密码 | `password` |
             | 构建时间 | ${{ env.FILE_DATE }} |
 
             刷写后请使用浏览器访问 http://192.168.100.253  
-            默认账号：`root`（密码为空，首次登录后请立即修改）
+            登录：`root` / `password`（请尽快修改密码）
           files: ${{ env.FIRMWARE }}/*
           generate_release_notes: false
           fail_on_unmatched_files: false
